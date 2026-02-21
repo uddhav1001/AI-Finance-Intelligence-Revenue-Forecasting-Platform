@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  /* Modern Finance Dark Palette */
+  --color-primary: #3b82f6;      /* Blue 500 */
+  --color-primary-dark: #2563eb; /* Blue 600 */
+  --color-secondary: #94a3b8;    /* Slate 400 */
+  --color-accent: #10b981;       /* Emerald 500 (Positive/Growth) */
+  --color-danger: #ef4444;       /* Red 500 */
+  --color-warning: #f59e0b;      /* Amber 500 */
+
+  --color-bg-dark: #0f172a;      /* Slate 900 (Main Background) */
+  --color-bg-card: rgba(30, 41, 59, 0.85); /* Slate 800 with opacity */
+  --color-text-main: #f8fafc;    /* Slate 50 */
+  --color-text-muted: #94a3b8;   /* Slate 400 */
+
+  /* Specific Sidebar Variables */
+  --color-sidebar-bg: #0b1120;   /* Slate 950 */
+  --color-sidebar-text: #e2e8f0; /* Slate 200 */
+
+  --backdrop-blur: 16px;
+  --border-glass: 1px solid rgba(255, 255, 255, 0.1);
+  --shadow-glass: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.glass-panel {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  border: var(--border-glass);
+  box-shadow: var(--shadow-glass);
+  border-radius: 1rem;
+}
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: var(--color-text-main);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--color-bg-dark);
+  color: var(--color-text-main);
+  background-attachment: fixed;
+}
