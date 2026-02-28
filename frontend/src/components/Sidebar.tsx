@@ -1,13 +1,25 @@
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useEffect } from 'react';
 
-const Sidebar = () => {
+interface SidebarProps {
+    isSidebarOpen: boolean;
+    setIsSidebarOpen: (isOpen: boolean) => void;
+}
+
+const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const [isCollapsed, setIsCollapsed] = useState(() => {
+
+    // We treat isSidebarOpen as the opposite of the old isCollapsed
+    const isCollapsed = !isSidebarOpen;
+
+    // Load initial state from local storage on mount
+    useEffect(() => {
         const saved = localStorage.getItem('sidebarCollapsed');
-        return saved === 'true';
-    });
+        if (saved) {
+            setIsSidebarOpen(saved !== 'true');
+        }
+    }, [setIsSidebarOpen]);
 
     useEffect(() => {
         localStorage.setItem('sidebarCollapsed', isCollapsed.toString());
@@ -32,7 +44,7 @@ const Sidebar = () => {
                     </h1>
                 )}
                 <button
-                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                     className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
                     aria-label="Toggle sidebar"
                 >
@@ -66,20 +78,27 @@ const Sidebar = () => {
                 ))}
             </nav>
 
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                    onClick={() => {
-                        localStorage.removeItem('token');
-                        navigate('/login');
-                    }}
-                    className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-4 py-3 text-[var(--color-danger)] hover:bg-[rgba(239,68,68,0.1)] rounded-lg transition-colors`}
-                    title={isCollapsed ? 'Logout' : ''}
+            {/* Bottom Profile Anchor */}
+            <div className="p-4 border-t border-gray-200 dark:border-white/10 mt-auto">
+                <Link
+                    to="/profile"
+                    className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'
+                        } px-4 py-3 rounded-xl transition-all duration-200 group ${location.pathname === '/profile'
+                            ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 dark:text-indigo-400'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-slate-800/50 dark:hover:text-white'
+                        }`}
+                    title={isCollapsed ? 'Profile' : ''}
                 >
-                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    {!isCollapsed && <span className="font-medium">Logout</span>}
-                </button>
+                    <div className={`${location.pathname === '/profile'
+                        ? 'text-indigo-600 dark:text-indigo-400'
+                        : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300'
+                        } transition-colors duration-200`}>
+                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    {!isCollapsed && <span className="font-medium whitespace-nowrap">Profile</span>}
+                </Link>
             </div>
         </div>
     );

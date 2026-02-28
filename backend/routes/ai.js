@@ -59,8 +59,7 @@ router.post('/analyze', auth, async (req, res) => {
 
         if (process.env.GEMINI_API_KEY) {
             try {
-                const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
                 // Prepare context
                 const transactionContext = transactions.map(t =>
@@ -78,9 +77,12 @@ router.post('/analyze', auth, async (req, res) => {
                     Provide one concise, valuable insight or tip for the user based on their spending patterns. Do not start with "Based on your transaction history". Just give the insight.`;
                 }
 
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                const text = response.text();
+                const response = await ai.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    contents: prompt,
+                });
+
+                const text = response.text;
 
                 if (query) {
                     chatResponse = text;

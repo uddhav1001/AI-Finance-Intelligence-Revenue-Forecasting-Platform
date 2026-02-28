@@ -1,85 +1,15 @@
 const router = require('express').Router();
 const auth = require('../middleware/auth');
 const Transaction = require('../models/Transaction');
-const { spawn } = require('child_process');
-const path = require('path');
+const User = require('../models/User');
 
-// Helper to run Python Forecast Script
-const getForecast = (transactions) => {
-    return new Promise((resolve, reject) => {
-        const scriptPath = path.join(__dirname, '..', 'scripts', 'forecast_revenue.py');
-
-        // Group transactions by date and calculate net profit (revenue - expense) for that day
-        const dailyNetMap = {};
-        transactions.forEach(t => {
-            const dateStr = new Date(t.date).toLocaleDateString('en-CA');
-            if (!dailyNetMap[dateStr]) {
-                dailyNetMap[dateStr] = 0;
-            }
-            if (t.type === 'revenue') {
-                dailyNetMap[dateStr] += (t.amount || 0);
-            } else if (t.type === 'expense') {
-                dailyNetMap[dateStr] -= (t.amount || 0);
-            }
-        });
-
-        const netData = Object.keys(dailyNetMap).map(date => ({
-            date: date,
-            amount: dailyNetMap[date]
-        }));
-
-        if (netData.length < 2) {
-            return resolve([]);
-        }
-
-        const pythonProcess = spawn('python', [scriptPath]);
-
-        let dataString = '';
-
-        pythonProcess.stdout.on('data', (data) => {
-            dataString += data.toString();
-        });
-
-        pythonProcess.stderr.on('data', (data) => {
-            console.error(`Python Stderr: ${data}`);
-        });
-
-        pythonProcess.on('close', (code) => {
-            console.log(`Python process exited with code ${code}`); // Debug log
-            if (code !== 0) {
-                console.error(`Forecast process exited with code ${code}`);
-                resolve([]);
-                return;
-            }
-            try {
-                console.log(`Python Output: ${dataString.substring(0, 100)}...`); // Debug log (truncated)
-                const result = JSON.parse(dataString);
-                if (result.error) {
-                    resolve([]);
-                } else {
-                    resolve(result);
-                }
-            } catch (e) {
-                console.error("Failed to parse forecast output");
-                resolve([]);
-            }
-        });
-
-        pythonProcess.stdin.write(JSON.stringify(netData));
-        pythonProcess.stdin.end();
-
-        pythonProcess.on('error', (err) => {
-            console.error("Failed to spawn python:", err);
-            resolve([]);
-        });
-    });
-};
 
 // @route   GET api/dashboard
 // @desc    Get dashboard data (Revenue, Expense, Profit, Forecast, Insights)
 // @access  Private
 router.get('/', auth, async (req, res) => {
     try {
+        const userDetails = await User.findById(req.user.id).select('username email');
         const transactions = await Transaction.find({ user: req.user.id });
 
         let totalRevenue = 0;
@@ -147,62 +77,43 @@ router.get('/', auth, async (req, res) => {
 
         const netProfit = totalRevenue - totalExpense;
 
-        // Forecast Logic (Prophet)
-        const forecastData = await getForecast(transactions);
+        // Forecast Logic (Moving Average)
+        let forecastData = [];
         let forecastRevenue = 0;
         let trend = 'stable';
         let growth = 0;
 
-        if (forecastData.length > 0) {
-            // Sum of next 30 days predicted revenue
-            forecastRevenue = forecastData.reduce((acc, curr) => acc + curr.forecast, 0);
+        if (netProfitTrend.length > 0) {
+            const totalNetProfitForTrend = netProfitTrend.reduce((acc, curr) => acc + curr.amount, 0);
 
-            // Determine Trend (compare first and last few days of forecast)
-            const firstDays = forecastData.slice(0, 5).reduce((a, b) => a + b.forecast, 0);
-            const lastDays = forecastData.slice(-5).reduce((a, b) => a + b.forecast, 0);
+            // Calculate span of days
+            const sortedDates = netProfitTrend.map(t => new Date(t.date).getTime()).sort((a, b) => a - b);
+            const firstDate = sortedDates[0];
+            const lastDate = sortedDates[sortedDates.length - 1];
 
-            if (lastDays > firstDays * 1.02) trend = 'upward';
-            else if (lastDays < firstDays * 0.98) trend = 'downward';
+            // Avoid division by zero or overly aggressive daily avg for single day
+            const diffDays = (lastDate - firstDate) / (1000 * 60 * 60 * 24);
+            const daySpan = diffDays < 1 ? 1 : diffDays + 1;
 
-        } else {
-            console.log("Entering Forecast Fallback Logic"); // Debug log area 
-            // Fallback: Simple projection based on daily average
-            if (netProfitTrend.length > 0) {
-                const totalNetProfitForTrend = netProfitTrend.reduce((acc, curr) => acc + curr.amount, 0);
+            const dailyAvg = totalNetProfitForTrend / daySpan;
+            forecastRevenue = dailyAvg * 30; // Project next 30 days
 
-                // Calculate span of days
-                const sortedDates = netProfitTrend.map(t => new Date(t.date).getTime()).sort((a, b) => a - b);
-                const firstDate = sortedDates[0];
-                const lastDate = sortedDates[sortedDates.length - 1];
-
-                // Avoid division by zero or overly aggressive daily avg for single day
-                // If 1 day: span = 1.
-                const diffDays = (lastDate - firstDate) / (1000 * 60 * 60 * 24);
-                const daySpan = diffDays < 1 ? 1 : diffDays + 1;
-
-                console.log(`Fallback: TotalNetProfit=${totalNetProfitForTrend}, Span=${daySpan}`);
-
-                const dailyAvg = totalNetProfitForTrend / daySpan;
-                forecastRevenue = dailyAvg * 30; // Project next 30 days
-
-                // Generate 30 days of data points for chart
-                const lastDateObj = new Date(lastDate);
-                for (let i = 1; i <= 30; i++) {
-                    const nextDate = new Date(lastDateObj);
-                    nextDate.setDate(lastDateObj.getDate() + i);
-                    forecastData.push({
-                        date: nextDate.toISOString().split('T')[0],
-                        forecast: parseFloat(dailyAvg.toFixed(2)),
-                        lower: parseFloat((dailyAvg * 0.9).toFixed(2)),
-                        upper: parseFloat((dailyAvg * 1.1).toFixed(2)),
-                        trend: 'stable'
-                    });
-                }
-                trend = 'stable';
-            } else {
-                forecastRevenue = 0;
-                console.log("Fallback: No net profit trend data found.");
+            // Generate 30 days of data points for chart
+            const lastDateObj = new Date(lastDate);
+            for (let i = 1; i <= 30; i++) {
+                const nextDate = new Date(lastDateObj);
+                nextDate.setDate(lastDateObj.getDate() + i);
+                forecastData.push({
+                    date: nextDate.toISOString().split('T')[0],
+                    forecast: parseFloat(dailyAvg.toFixed(2)),
+                    lower: parseFloat((dailyAvg * 0.9).toFixed(2)),
+                    upper: parseFloat((dailyAvg * 1.1).toFixed(2)),
+                    trend: 'stable'
+                });
             }
+            trend = 'stable';
+        } else {
+            forecastRevenue = 0;
         }
 
         // Calculate Growth vs Last Month (Applies to both Prophet and Fallback)
@@ -278,6 +189,7 @@ router.get('/', auth, async (req, res) => {
         ];
 
         res.json({
+            user: userDetails ? { username: userDetails.username, email: userDetails.email } : undefined,
             totalRevenue,
             totalExpense,
             netProfit,

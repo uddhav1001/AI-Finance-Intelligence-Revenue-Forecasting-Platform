@@ -53,6 +53,72 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// Forgot Password
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            // We return a generic message even if the user doesn't exist to prevent email enum attacks
+            return res.json({ message: 'If that email exists, a reset link has been sent.' });
+        }
+
+        // Generate token
+        const crypto = require('crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+
+        // Hash it for DB storage
+        user.resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
+        user.resetPasswordExpires = Date.now() + 3600000; // 1 hour expiration
+        await user.save();
+
+        // Send Email
+        const { sendPasswordResetEmail } = require('../utils/emailService');
+        const resetUrl = `http://localhost:5173/reset-password/${token}`;
+        await sendPasswordResetEmail(user.email, resetUrl, user.username);
+
+        res.json({ message: 'If that email exists, a reset link has been sent.' });
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        res.status(500).json({ message: 'Could not process request' });
+    }
+});
+
+// Reset Password
+router.post('/reset-password/:token', async (req, res) => {
+    try {
+        const { password } = req.body;
+        const crypto = require('crypto');
+
+        // Hash the token from the URL to compare with the DB
+        const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'Token is invalid or has expired' });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(password, salt);
+
+        // Clear reset fields
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        res.json({ message: 'Password has been safely reset. You may now log in.' });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ message: 'Could not process request' });
+    }
+});
+
 // Google Auth
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 

@@ -129,13 +129,13 @@ const Reports = () => {
 
                 <div id="report-content" className="space-y-6 bg-transparent">
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="glass-panel p-6 border-none">
                             <p className="text-sm font-medium text-[var(--color-text-muted)]">Total Revenue</p>
-                            <div className="flex items-center gap-3 mt-1">
-                                <p className="text-2xl font-bold text-[var(--color-accent)]">{formatCurrency(data?.totalRevenue || 0)}</p>
+                            <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
+                                <p className="text-2xl font-bold text-[var(--color-accent)] truncate">{formatCurrency(data?.totalRevenue || 0)}</p>
                                 {data && (
-                                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${data.revenueChange >= 0 ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]'}`}>
+                                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${data.revenueChange >= 0 ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]'}`}>
                                         {data.revenueChange > 0 ? '+' : ''}{data.revenueChange.toFixed(1)}%
                                     </span>
                                 )}
@@ -143,10 +143,10 @@ const Reports = () => {
                         </div>
                         <div className="glass-panel p-6 border-none">
                             <p className="text-sm font-medium text-[var(--color-text-muted)]">Total Expense</p>
-                            <div className="flex items-center gap-3 mt-1">
-                                <p className="text-2xl font-bold text-[var(--color-danger)]">{formatCurrency(data?.totalExpense || 0)}</p>
+                            <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
+                                <p className="text-2xl font-bold text-[var(--color-danger)] truncate">{formatCurrency(data?.totalExpense || 0)}</p>
                                 {data && (
-                                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${data.expenseChange <= 0 ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]'}`}>
+                                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${data.expenseChange <= 0 ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]'}`}>
                                         {data.expenseChange > 0 ? '+' : ''}{data.expenseChange.toFixed(1)}%
                                     </span>
                                 )}
@@ -154,12 +154,12 @@ const Reports = () => {
                         </div>
                         <div className="glass-panel p-6 border-none">
                             <p className="text-sm font-medium text-[var(--color-text-muted)]">Net Profit</p>
-                            <div className="flex items-center gap-3 mt-1">
-                                <p className={`text-2xl font-bold ${data?.netProfit && data.netProfit >= 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-danger)]'}`}>
+                            <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
+                                <p className={`text-2xl font-bold truncate ${data?.netProfit && data.netProfit >= 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-danger)]'}`}>
                                     {formatCurrency(data?.netProfit || 0)}
                                 </p>
                                 {data && (
-                                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${data.profitChange >= 0 ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]'}`}>
+                                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${data.profitChange >= 0 ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]'}`}>
                                         {data.profitChange > 0 ? '+' : ''}{data.profitChange.toFixed(1)}%
                                     </span>
                                 )}
@@ -167,10 +167,10 @@ const Reports = () => {
                         </div>
                         <div className="glass-panel p-6 border-none">
                             <p className="text-sm font-medium text-[var(--color-text-muted)]">Forecast Revenue (30 Days)</p>
-                            <div className="flex items-center gap-3 mt-1">
-                                <p className="text-2xl font-bold text-purple-400">{formatCurrency(data?.forecastRevenue || 0)}</p>
+                            <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
+                                <p className="text-2xl font-bold text-purple-400 truncate">{formatCurrency(data?.forecastRevenue || 0)}</p>
                                 {data && (
-                                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${data.growth >= 0 ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]'}`}>
+                                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${data.growth >= 0 ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]'}`}>
                                         {data.growth > 0 ? '+' : ''}{(data.growth || 0).toFixed(1)}%
                                     </span>
                                 )}

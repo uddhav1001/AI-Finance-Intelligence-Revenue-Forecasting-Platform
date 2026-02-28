@@ -50,8 +50,8 @@ const FinancialChart: React.FC<FinancialChartProps> = ({ lineData, pieData, barD
                                 formatter={(value: any) => [typeof value === 'number' ? formatCurrency(value) : value, '']}
                             />
                             <Legend wrapperStyle={{ color: 'var(--color-text-main)' }} />
-                            <Line type="monotone" dataKey="revenue" stroke="var(--color-accent)" name="Revenue" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: "var(--color-accent)" }} />
-                            <Line type="monotone" dataKey="expense" stroke="var(--color-danger)" name="Expense" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: "var(--color-danger)" }} />
+                            <Line type="monotone" dataKey="revenue" stroke="#3b82f6" name="Revenue" strokeWidth={2} dot={{ r: 4, fill: "#3b82f6", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#3b82f6" }} />
+                            <Line type="monotone" dataKey="expense" stroke="#f43f5e" name="Expense" strokeWidth={2} dot={{ r: 4, fill: "#f43f5e", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#f43f5e" }} />
                         </LineChart>
                     </ResponsiveContainer>
                 );

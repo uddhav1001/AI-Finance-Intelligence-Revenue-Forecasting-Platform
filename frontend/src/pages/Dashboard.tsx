@@ -43,6 +43,7 @@ interface DashboardData {
     aiInsights: any[];
     pieChartData: any[];
     lineChartData: any[];
+    user?: { username: string; email: string };
 }
 
 const Dashboard = () => {
@@ -100,6 +101,14 @@ const Dashboard = () => {
         <div className="font-sans">
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Welcome Header */}
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold dark:text-white text-gray-900">
+                        Welcome back, <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">{data?.user?.username || 'User'}</span>! 👋
+                    </h1>
+                    <p className="mt-2 text-sm dark:text-gray-400 text-gray-500">Here's what's happening with your finances today.</p>
+                </div>
+
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <StatCard

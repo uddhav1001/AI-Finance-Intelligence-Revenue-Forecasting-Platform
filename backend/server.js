@@ -9,8 +9,12 @@ const passport = require('passport');
 const session = require('cookie-session');
 require('./config/passport'); // Passport config
 const authRoutes = require('./routes/auth');
+const { initCronJobs } = require('./scripts/cronJobs');
 
 const app = express();
+
+// Initialize Cron Jobs
+initCronJobs();
 
 // Middleware
 app.use(cors({
@@ -55,6 +59,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/finance', require('./routes/finance'));
 app.use('/api/finance', require('./routes/finance'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/user', require('./routes/user'));
 app.use('/api/ai', require('./routes/ai'));
 
 const PORT = process.env.PORT || 5000;

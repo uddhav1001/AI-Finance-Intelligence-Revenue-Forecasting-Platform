@@ -34,4 +34,7 @@ const TransactionSchema = new mongoose.Schema({
     }
 });
 
+// Create index to optimize finding user transactions sorted by most recent date
+TransactionSchema.index({ user: 1, date: -1 });
+
 module.exports = mongoose.model('Transaction', TransactionSchema);
