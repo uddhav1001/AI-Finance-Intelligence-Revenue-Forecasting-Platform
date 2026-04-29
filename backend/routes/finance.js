@@ -13,7 +13,7 @@ router.post('/transaction', [auth, upload.single('invoice')], async (req, res) =
     try {
         const { type, amount, category, paymentMethod, description, date } = req.body;
 
-        let fileUrl = '';
+        let fileUrl = req.body.fileUrl || '';
         if (req.file) {
             fileUrl = `${req.protocol}://${req.get('host')}/${req.file.path.replace(/\\/g, "/")}`;
         }

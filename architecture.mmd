@@ -1,0 +1,47 @@
+graph TD
+    User(["User (Browser)"])
+    
+    subgraph "Frontend Layer"
+        UI["React UI & TailwindCSS"]
+        State["State Management via Axios"]
+        Charts["Recharts Visualizations"]
+    end
+
+    subgraph "Backend Layer"
+        API["Express Router & Middlewares"]
+        Auth["Auth Controllers (Passport.js/OAuth)"]
+        Finance["Finance Logic (Invoices & Transactions)"]
+        AI_Controller["AI Controller (@google/genai)"]
+        Cron["Node-Cron Scheduler"]
+    end
+
+    subgraph "Database & Storage"
+        MongoDB[("MongoDB (Mongoose ORM)")]
+        FileStorage>"/uploads directory"]
+    end
+
+    subgraph "Background Task"
+        PythonScript(("forecasting_revenue.py"))
+    end
+    
+    ExternalAPI(["Google Gemini API"])
+
+    %% Data Flow
+    User -->|HTTP Requests / Uploads| UI
+    UI --> State
+    State -->|Axios REST APIs| API
+    UI --> Charts
+    Charts -->|Reads Data| State
+
+    API --> Auth
+    API --> Finance
+    API --> AI_Controller
+
+    Auth --> MongoDB
+    Finance --> MongoDB
+    Finance -->|Multer| FileStorage
+
+    AI_Controller -->|Prompts & Queries| ExternalAPI
+    
+    Cron -->|Spawns Process| PythonScript
+    PythonScript -->|Reads & Writes| MongoDB

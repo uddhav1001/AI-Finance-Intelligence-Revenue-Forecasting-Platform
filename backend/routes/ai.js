@@ -2,6 +2,8 @@ const router = require('express').Router();
 const auth = require('../middleware/auth');
 const Transaction = require('../models/Transaction');
 const { GoogleGenAI } = require("@google/genai");
+const upload = require('../middleware/upload');
+const fs = require('fs');
 
 // @route   POST api/ai/analyze
 // @desc    Analyze transactions to provide insights or chat response
@@ -78,7 +80,7 @@ router.post('/analyze', auth, async (req, res) => {
                 }
 
                 const response = await ai.models.generateContent({
-                    model: "gemini-2.5-flash",
+                    model: "gemini-flash-lite-latest",
                     contents: prompt,
                 });
 
@@ -123,6 +125,65 @@ router.post('/analyze', auth, async (req, res) => {
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
+    }
+});
+
+// @route   POST api/ai/parse-invoice
+// @desc    Parse an uploaded invoice and extract amount and store
+// @access  Private
+router.post('/parse-invoice', [auth, upload.single('invoice')], async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ msg: 'No file uploaded' });
+        }
+
+        const fileUrl = `${req.protocol}://${req.get('host')}/${req.file.path.replace(/\\/g, "/")}`;
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({ msg: 'Gemini API Key missing' });
+        }
+
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        
+        // Read file to base64
+        const fileBytes = fs.readFileSync(req.file.path);
+        const base64Data = Buffer.from(fileBytes).toString("base64");
+        const mimeType = req.file.mimetype;
+
+        const prompt = `You are a financial receipt parser. Analyze the provided image of an invoice/receipt.
+Extract the "Grand Total" or "Total" amount, and the likely store or vendor name.
+Respond ONLY with a valid JSON object in this exact format: {"amount": 123.45, "store": "Store Name"}. Do not use markdown blocks (\`\`\`).`;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-flash-lite-latest",
+            contents: [
+                prompt,
+                { inlineData: { data: base64Data, mimeType } }
+            ],
+            config: {
+                responseMimeType: "application/json",
+            }
+        });
+
+        const text = response.text;
+        let parsedData = {};
+        
+        try {
+            parsedData = JSON.parse(text.trim());
+        } catch (parseError) {
+            console.error("JSON Parse Error on backend. Raw AI Text:", text);
+            return res.status(500).json({ msg: 'Failed to parse AI response' });
+        }
+
+        res.json({
+            amount: parsedData.amount,
+            store: parsedData.store,
+            fileUrl
+        });
+
+    } catch (err) {
+        console.error("Invoice Parse Error:", err.message);
+        res.status(500).send('Server Error during parsing');
     }
 });
 

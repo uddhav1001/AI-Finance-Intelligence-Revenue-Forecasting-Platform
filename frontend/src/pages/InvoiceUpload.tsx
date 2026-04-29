@@ -4,16 +4,47 @@ import api from '../api/axios';
 
 const InvoiceUpload = () => {
     const navigate = useNavigate();
-    const [type, setType] = useState('expense');
+    const [type, setType] = useState('revenue');
     const [category, setCategory] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [amount, setAmount] = useState('');
+    const [description, setDescription] = useState('');
     const [file, setFile] = useState<File | null>(null);
+    const [fileUrl, setFileUrl] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [parsing, setParsing] = useState(false);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
+            const selectedFile = e.target.files[0];
+            setFile(selectedFile);
+            
+            const formData = new FormData();
+            formData.append('invoice', selectedFile);
+
+            setParsing(true);
+            setError('');
+
+            try {
+                const res = await api.post('/ai/parse-invoice', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                
+                if (res.data.amount) setAmount(res.data.amount.toString());
+                if (res.data.store) {
+                    setDescription(`Invoice from ${res.data.store}`);
+                    if (!category) setCategory(res.data.store.toUpperCase());
+                }
+                setType('revenue'); // Force revenue for B-Mart type invoices
+                if (res.data.fileUrl) setFileUrl(res.data.fileUrl);
+
+            } catch (err: any) {
+                console.error(err);
+                setError(err.response?.data?.message || 'Failed to auto-parse invoice automatically.');
+            } finally {
+                setParsing(false);
+            }
         }
     };
 
@@ -25,8 +56,12 @@ const InvoiceUpload = () => {
         const formData = new FormData();
         formData.append('type', type);
         formData.append('category', category);
+        formData.append('amount', amount);
+        formData.append('description', description);
         formData.append('date', date);
-        if (file) {
+        if (fileUrl) {
+            formData.append('fileUrl', fileUrl);
+        } else if (file) {
             formData.append('invoice', file);
         }
 
@@ -37,11 +72,8 @@ const InvoiceUpload = () => {
                 return;
             }
 
-            // Important: Let browser set Content-Type for FormData (multipart/form-data)
             await api.post('/finance/transaction', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                }
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
 
             navigate('/dashboard');
@@ -60,7 +92,7 @@ const InvoiceUpload = () => {
                     Upload Invoice
                 </h2>
                 <p className="mt-2 text-center text-sm text-[var(--color-text-muted)]">
-                    Add a transaction with supporting document
+                    Add a transaction with supporting document and auto-extraction
                 </p>
             </div>
 
@@ -107,6 +139,7 @@ const InvoiceUpload = () => {
                                                 className="sr-only"
                                                 accept="image/*,application/pdf"
                                                 onChange={handleFileChange}
+                                                disabled={parsing}
                                             />
                                         </label>
                                         <p className="pl-1 text-[var(--color-text-muted)]">or drag and drop</p>
@@ -121,6 +154,56 @@ const InvoiceUpload = () => {
                             </div>
                         </div>
 
+                        {/* AI Extracted Details Card */}
+                        {(amount !== '' || parsing) && (
+                            <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 rounded-xl p-4">
+                                <h4 className="text-sm font-semibold text-emerald-400 mb-2 flex items-center">
+                                    <span className="mr-2">✨</span> AI Extraction Result
+                                </h4>
+                                {parsing ? (
+                                    <div className="flex items-center text-sm text-emerald-400/70 animate-pulse font-medium">
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Analyzing your invoice...
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-between items-center transition-all duration-300">
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-semibold mb-1">Total Amount</p>
+                                            <p className="text-2xl font-bold text-[var(--color-text-main)]">₹{amount}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-semibold mb-1">Detected Category</p>
+                                            <p className="text-md font-medium text-[var(--color-text-main)]">{description ? description.replace('Invoice from ', '') : category.toUpperCase()}</p>
+                                            <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                                                {type.toUpperCase()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Amount Field (Editable fallback) */}
+                        <div>
+                            <label htmlFor="amount" className="block text-sm font-medium text-[var(--color-text-muted)]">
+                                Final Amount (Verify)
+                            </label>
+                            <input
+                                type="number"
+                                name="amount"
+                                id="amount"
+                                step="0.01"
+                                className="mt-1 block w-full outline-none bg-slate-800/50 border border-white/10 focus:ring-2 focus:ring-[var(--color-primary)] sm:text-sm rounded-lg text-[var(--color-text-main)] px-4 py-2"
+                                placeholder="0.00"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                required
+                            />
+                        </div>
+
                         {/* Type Selection */}
                         <div>
                             <label className="block text-sm font-medium text-[var(--color-text-muted)]">Transaction Type</label>
@@ -129,7 +212,7 @@ const InvoiceUpload = () => {
                                 onChange={(e) => setType(e.target.value)}
                                 className="mt-1 block w-full pl-3 pr-10 py-2 text-base outline-none bg-slate-800/50 border border-white/10 focus:ring-2 focus:ring-[var(--color-primary)] sm:text-sm rounded-lg text-[var(--color-text-main)]"
                             >
-                                <option value="income" className="bg-slate-800">Revenue</option>
+                                <option value="revenue" className="bg-slate-800">Revenue</option>
                                 <option value="expense" className="bg-slate-800">Expense</option>
                             </select>
                         </div>
@@ -137,16 +220,16 @@ const InvoiceUpload = () => {
                         {/* Category */}
                         <div>
                             <label htmlFor="category" className="block text-sm font-medium text-[var(--color-text-muted)]">
-                                Category
+                                Category Tag
                             </label>
                             <input
                                 type="text"
                                 name="category"
                                 id="category"
                                 className="mt-1 block w-full outline-none bg-slate-800/50 border border-white/10 focus:ring-2 focus:ring-[var(--color-primary)] sm:text-sm rounded-lg text-[var(--color-text-main)] placeholder-slate-500 uppercase px-4 py-2"
-                                placeholder="e.g. MARKETING, SALARY"
+                                placeholder="e.g. B-MART, GROCERY"
                                 value={category}
-                                onChange={(e) => setCategory(e.target.value)}
+                                onChange={(e) => setCategory(e.target.value?.toUpperCase())}
                                 required
                             />
                         </div>
@@ -168,20 +251,20 @@ const InvoiceUpload = () => {
                         </div>
 
                         {/* Buttons */}
-                        <div className="flex items-center justify-between space-x-4 pt-2">
+                        <div className="flex items-center justify-between space-x-4 pt-4">
                             <button
                                 type="button"
                                 onClick={() => navigate('/dashboard')}
-                                className="w-full flex justify-center py-2 px-4 rounded-xl shadow-sm text-sm font-medium text-slate-300 bg-slate-800/50 border border-white/10 hover:bg-slate-800 transition-colors"
+                                className="w-full flex justify-center py-2.5 px-4 rounded-xl shadow-sm text-sm font-medium text-slate-300 bg-slate-800/50 border border-white/10 hover:bg-slate-800 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                disabled={loading}
-                                className={`w-full flex justify-center py-2 px-4 rounded-xl shadow-lg shadow-blue-500/20 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-emerald-600 hover:-translate-y-0.5 transition-all ${loading ? 'opacity-75 cursor-not-allowed' : ''}`}
+                                disabled={loading || parsing}
+                                className={`w-full flex justify-center py-2.5 px-4 rounded-xl shadow-lg shadow-blue-500/20 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-emerald-600 hover:-translate-y-0.5 transition-all ${(loading || parsing) ? 'opacity-75 cursor-not-allowed' : ''}`}
                             >
-                                {loading ? 'Uploading...' : 'Submit Transaction'}
+                                {loading ? 'Saving...' : 'Confirm Transaction'}
                             </button>
                         </div>
                     </form>
